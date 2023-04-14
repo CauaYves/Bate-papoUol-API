@@ -31,12 +31,12 @@ app.post("/participants", async (req, res) => {    //Rotas da API
 
     if (!name) return res.sendStatus(422)
 
-    const username = await db.collection("participants").findOne({ nome: name })
+    const username = await db.collection("participants").findOne({ name: name })
 
     if(username) return res.sendStatus(409)
 
     participants.insertOne({
-        nome: name,
+        name: name,
         lastStatus: Date.now()
     })
 
