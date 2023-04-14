@@ -25,24 +25,28 @@ mongoClient.connect()
     })
     .catch(() => console.log(err.message))
 
-app.post("/participants", (req, res) => {    //Rotas da API
+app.post("/participants", async (req, res) => {    //Rotas da API
 
-    const name = req.body.name
+    const { name } = req.body 
+
+    if (!name) return res.sendStatus(422)
+
+    const username = await db.collection("participants").findOne({ nome: name })
+
+    if(username) return res.sendStatus(409)
 
     participants.insertOne({
         nome: name,
         lastStatus: Date.now()
     })
 
-    messages.insertOne(
-        {
-            from: name,
-            to: 'Todos',
-            text: 'entra na sala...',
-            type: 'status',
-            time: hour
-        }
-    )
+    messages.insertOne({
+        from: name,
+        to: 'Todos',
+        text: 'entra na sala...',
+        type: 'status',
+        time: hour
+    })
     res.sendStatus(201)
 })
 
@@ -75,8 +79,8 @@ app.get("/messages", async (req, res) => {
     const user = req.headers.user
     const { from, to } = doc
 
-    await cursor.forEach((doc) =>{
-        if(from === user || to === "Todos" || to === user){
+    await cursor.forEach((doc) => {
+        if (from === user || to === "Todos" || to === user) {
             messages.push(doc)
         }
     })
@@ -85,6 +89,13 @@ app.get("/messages", async (req, res) => {
 
 })
 
+app.post("/status", (req, res) => {
+
+    const user = req.headers.user
+
+
+    res.send(user)
+})
 
 const PORT = 5000
 app.listen(PORT, () => console.log(`server running on port ${PORT}`))
