@@ -53,6 +53,18 @@ app.get("/participants", async (req, res) => {
     res.send(participants)
 })
 
+app.post("/messages", (req, res) => {
 
+    const { to, text, type } = req.body
+    messages.insertOne({
+        from: req.headers.user, //achar o usuario que mandou a mensagem pelo headers
+        to,
+        text,
+        type,
+        time: hour,
+    })
+    res.sendStatus(201)
+
+})
 const PORT = 5000
 app.listen(PORT, () => console.log(`server running on port ${PORT}`))
