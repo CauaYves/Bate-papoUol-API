@@ -27,13 +27,13 @@ mongoClient.connect()
 
 app.post("/participants", async (req, res) => {    //Rotas da API
 
-    const { name } = req.body 
+    const { name } = req.body
 
-    if (!name) return res.sendStatus(422)
+    if (!name || !isNaN(name)) return res.sendStatus(422)
 
     const username = await db.collection("participants").findOne({ name: name })
 
-    if(username) return res.sendStatus(409)
+    if (username) return res.sendStatus(409)
 
     participants.insertOne({
         name: name,
@@ -51,7 +51,6 @@ app.post("/participants", async (req, res) => {    //Rotas da API
 })
 
 app.get("/participants", async (req, res) => {
-
     const participants = []
     const cursor = await db.collection('participants').find({});
     await cursor.forEach((doc) => participants.push(doc));
@@ -61,13 +60,16 @@ app.get("/participants", async (req, res) => {
 app.post("/messages", (req, res) => {
 
     const { to, text, type } = req.body
-    messages.insertOne({
-        from: req.headers.user, //achar o usuario que mandou a mensagem pelo headers
-        to,
-        text,
-        type,
-        time: hour,
-    })
+
+    if (!to || !text || !type || req.body.user ) return sendStatus(422)
+
+        messages.insertOne({
+            from: req.headers.user, //achar o usuario que mandou a mensagem pelo headers
+            to,
+            text,
+            type,
+            time: hour,
+        })
     res.sendStatus(201)
 
 })
