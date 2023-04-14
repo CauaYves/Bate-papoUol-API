@@ -45,6 +45,14 @@ app.post("/participants", (req, res) => {
     res.sendStatus(201)
 })
 
+app.get("/participants", async (req, res) => {
+
+    const participants = []
+    const cursor = await db.collection('participants').find({});
+    await cursor.forEach((doc) => participants.push(doc));
+    res.send(participants)
+})
+
 
 const PORT = 5000
 app.listen(PORT, () => console.log(`server running on port ${PORT}`))
