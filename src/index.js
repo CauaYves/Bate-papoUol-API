@@ -31,7 +31,7 @@ app.post("/participants", async (req, res) => {    //Rotas da API
 
     if (!name || !isNaN(name)) return res.sendStatus(422)
 
-    const username = await db.collection("participants").findOne({ name: name })
+    const username = await participants.findOne({ name: name })
 
     if (username) return res.sendStatus(409)
 
@@ -51,17 +51,18 @@ app.post("/participants", async (req, res) => {    //Rotas da API
 })
 
 app.get("/participants", async (req, res) => {
-    const participants = []
-    const cursor = await db.collection('participants').find({});
-    await cursor.forEach((doc) => participants.push(doc));
-    res.send(participants)
+    const participantes = []
+    const cursor = await participants.find({});
+    await cursor.forEach((doc) => participantes.push(doc));
+    res.send(participantes)
 })
 
-app.post("/messages", (req, res) => {
+app.post("/messages",async (req, res) => {
 
-    const { to, text, type } = req.body
-
-    if (!to || !text || !type || req.body.user ) return sendStatus(422)
+    const { to, text, type, user } = req.body
+    const userSearch = await participants.find({name: user})
+    if(!userSearch) return res.sendStatus(422)
+    if (!to || !text || !type || !user ) return res.sendStatus(422)
 
         messages.insertOne({
             from: req.headers.user, //achar o usuario que mandou a mensagem pelo headers
