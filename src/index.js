@@ -4,9 +4,10 @@ import { MongoClient } from "mongodb"
 import dotenv from "dotenv"
 import dayjs from "dayjs"
 
-const app = express()
+const app = express()   //variaveis
 const data = dayjs()
 const hour = data.format('HH:mm:ss')
+
 app.use(cors())
 app.use(express.json())
 dotenv.config()
@@ -15,7 +16,7 @@ let db
 let participants
 let messages
 
-const mongoClient = new MongoClient(process.env.DATABASE_URL)
+const mongoClient = new MongoClient(process.env.DATABASE_URL)   //conexão com o banco de dados
 mongoClient.connect()
     .then(() => {
         db = mongoClient.db()
@@ -24,7 +25,7 @@ mongoClient.connect()
     })
     .catch(() => console.log(err.message))
 
-app.post("/participants", (req, res) => {
+app.post("/participants", (req, res) => {    //Rotas da API
 
     const name = req.body.name
 
@@ -66,5 +67,24 @@ app.post("/messages", (req, res) => {
     res.sendStatus(201)
 
 })
+
+app.get("/messages", async (req, res) => {
+
+    const cursor = await db.collection('messages').find({})
+    const messages = []
+    const user = req.headers.user
+    const { from, to } = doc
+
+    await cursor.forEach((doc) =>{
+        if(from === user || to === "Todos" || to === user){
+            messages.push(doc)
+        }
+    })
+
+    res.send(messages)
+
+})
+
+
 const PORT = 5000
 app.listen(PORT, () => console.log(`server running on port ${PORT}`))
