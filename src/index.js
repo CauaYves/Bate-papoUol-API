@@ -54,7 +54,7 @@ app.post("/participants", async (req, res) => {    //Rotas da API
 
 app.get("/participants", async (req, res) => {
     const participantes = []
-    const cursor = await participants.find({});
+    const cursor = await participants.find({}).toArray();
     cursor.forEach((doc) => participantes.push(doc));
     res.send(participantes)
 })
@@ -91,16 +91,6 @@ app.get("/messages", async (req, res) => {
     const messagesArray = [];
     const userName = req.headers.user;
     const cursor = await messages.find({}).toArray();
-
-    if (cursor.length === 0) return res.send(
-        messages.insertOne({
-            from: userName,
-            to,
-            text,
-            type,
-            time: hour,
-        })
-    )
 
     messagesArray.push(...cursor.filter((doc) => {
         return doc.from === userName || doc.to === "Todos" || doc.to === userName;
