@@ -15,6 +15,7 @@ dotenv.config()
 let db
 let participants
 let messages
+let status
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL)   //conexão com o banco de dados
 mongoClient.connect()
@@ -22,6 +23,7 @@ mongoClient.connect()
         db = mongoClient.db()
         participants = db.collection("participants")
         messages = db.collection("messages")
+        status = db.collection("status")
     })
     .catch(() => console.log(err.message))
 
@@ -37,7 +39,7 @@ app.post("/participants", async (req, res) => {    //Rotas da API
 
     participants.insertOne({
         name: name,
-        lastStatus: Date.now()
+        // lastStatus: Date.now()
     })
 
     messages.insertOne({
@@ -47,7 +49,6 @@ app.post("/participants", async (req, res) => {    //Rotas da API
         type: 'status',
         time: hour
     })
-    // { from: 'xxx', to: 'Todos', text: 'entra na sala...', type: 'status', time: 'HH:mm:ss' }
     res.sendStatus(201)
 })
 
@@ -89,8 +90,17 @@ app.post("/messages", async (req, res) => {
 app.get("/messages", async (req, res) => {
     const messagesArray = [];
     const userName = req.headers.user;
-
     const cursor = await messages.find({}).toArray();
+
+    if (cursor.length === 0) return res.send(
+        messages.insertOne({
+            from: userName,
+            to,
+            text,
+            type,
+            time: hour,
+        })
+    )
 
     messagesArray.push(...cursor.filter((doc) => {
         return doc.from === userName || doc.to === "Todos" || doc.to === userName;
@@ -99,13 +109,17 @@ app.get("/messages", async (req, res) => {
     res.send(messagesArray);
 });
 
-
-app.post("/status", (req, res) => {
-
+app.post("/status", async (req, res) => {
     const user = req.headers.user
+    if (req.body.user) return res.sendStatus(404)
 
-    res.send(user)
+    const filter = { name: user }
+    const updateStatus = { $set: { lastStatus: Date.now() } }
+    const result = await participants.findOneAndUpdate(filter, updateStatus);
+
+    res.send(result)
 })
+
 
 const PORT = 5000
 app.listen(PORT, () => console.log(`server running on port ${PORT}`))
