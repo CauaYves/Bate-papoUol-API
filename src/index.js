@@ -24,7 +24,7 @@ try {
 const db = mongoClient.db()     //coleções do banco
 const participants = db.collection("participants")
 const messages = db.collection("messages")
-const status = db.collection("status")
+  
 
 app.post("/participants", async (req, res) => {    //Rotas da API
 
@@ -33,15 +33,14 @@ app.post("/participants", async (req, res) => {    //Rotas da API
 
     try {
         const username = await participants.findOne({ name: name })
-
         if (username) return res.sendStatus(409)
 
-        participants.insertOne({
+        await participants.insertOne({
             name: name,
             lastStatus: Date.now()
         })
 
-        messages.insertOne({
+        await messages.insertOne({
             from: name,
             to: 'Todos',
             text: 'entra na sala...',
