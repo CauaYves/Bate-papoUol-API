@@ -25,47 +25,46 @@ const db = mongoClient.db()     //coleções do banco
 const participants = db.collection("participants")
 const messages = db.collection("messages")
 const status = db.collection("status")
-let userName 
+let userName
 
 app.post("/participants", async (req, res) => {    //Rotas da API
 
-    const { user } = req.headers
-    userName = user
-    if (!user || !isNaN(user)) return res.sendStatus(422)
+    const { name } = req.body
+    if (!name || !isNaN(name)) return res.sendStatus(422)
 
     try {
-        const username = await participants.findOne({ name: user })
+        const username = await participants.findOne({ name: name })
 
         if (username) return res.sendStatus(409)
 
         participants.insertOne({
-            name: user,
+            name: name,
             lastStatus: Date.now()
         })
+        const msgs = await messages.find({}).toArray()
+        console.log(msgs)
         messages.insertOne({
-            from: user,
+            from: name,
             to: 'Todos',
             text: 'entra na sala...',
             type: 'status',
-            time: hour
         })
-
-        res.sendStatus(201)
     } catch (err) {
-        res.status(500).send(err.message)
+        res.send(err.message).send(500)
     }
+}
+)
 
-})
 
 app.get("/participants", async (req, res) => {
-console.log(req.body.user)
+    console.log(req.body.user)
     try {
         const participantes = []
         const cursor = await participants.find({}).toArray();
 
         cursor.forEach((doc) => participantes.push(doc));
 
-        if(cursor.length === 0) res.send({
+        if (cursor.length === 0) res.send({
             from: userName,
             to: 'Todos',
             text: 'entra na sala...',
@@ -138,9 +137,9 @@ app.get("/messages", async (req, res) => {
 });
 
 app.post("/status/:id", async (req, res) => {
-    
+
     const user = req.headers.user
-    
+
     if (!user) return res.sendStatus(404)
 
     try {
@@ -148,7 +147,7 @@ app.post("/status/:id", async (req, res) => {
         const updateStatus = { $set: { lastStatus: Date.now() } }
         const result = await participants.findOneAndUpdate(filter, updateStatus);
 
-        if(!result.lastErrorObject.updatedExisting) return res.sendStatus(404)
+        if (!result.lastErrorObject.updatedExisting) return res.sendStatus(404)
 
         res.sendStatus(200)
     } catch (err) {
