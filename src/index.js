@@ -39,7 +39,7 @@ app.post("/participants", async (req, res) => {    //Rotas da API
 
     participants.insertOne({
         name: name,
-        // lastStatus: Date.now()
+        lastStatus: Date.now()
     })
 
     messages.insertOne({
