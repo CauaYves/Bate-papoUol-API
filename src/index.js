@@ -28,26 +28,28 @@ const status = db.collection("status")
 
 app.post("/participants", async (req, res) => {    //Rotas da API
 
-    const { name } = req.body
-    if (!name || !isNaN(name)) return res.sendStatus(422)
+    const { user } = req.body
+    if (!user || !isNaN(user)) return res.sendStatus(422)
 
     try {
-        const username = await participants.findOne({ name: name })
+        const username = await participants.findOne({ name: user })
 
         if (username) return res.sendStatus(409)
 
         participants.insertOne({
-            name: name,
+            name: user,
             lastStatus: Date.now()
         })
-
+        const msgs = await messages.find({}).toArray()
+        console.log(msgs)
         messages.insertOne({
-            from: name,
+            from: user,
             to: 'Todos',
             text: 'entra na sala...',
             type: 'status',
             time: hour
         })
+
         res.sendStatus(201)
     } catch (err) {
         res.status(500).send(err.message)
@@ -137,7 +139,7 @@ app.post("/status/:id", async (req, res) => {
         const filter = { name: user }
         const updateStatus = { $set: { lastStatus: Date.now() } }
         const result = await participants.findOneAndUpdate(filter, updateStatus);
-        
+
         if(!result.lastErrorObject.updatedExisting) return res.sendStatus(404)
 
         res.sendStatus(200)
