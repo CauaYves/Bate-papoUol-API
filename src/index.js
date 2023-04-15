@@ -57,38 +57,46 @@ app.get("/participants", async (req, res) => {
     res.send(participantes)
 })
 
-app.post("/messages",async (req, res) => {
+app.post("/messages", async (req, res) => {
+    const { to, text, type } = req.body;
+    console.log(to, text, type)
+    const user = req.headers.user;
 
-    const { to, text, type, user } = req.body
-    const userSearch = await participants.find({name: user})
-    if(!userSearch) return res.sendStatus(422)
-    if (!to || !text || !type || !user ) return res.sendStatus(422)
+    if (!to || !text || !type || !user) {
+        return res.sendStatus(422);
+    }
 
-        messages.insertOne({
-            from: req.headers.user, //achar o usuario que mandou a mensagem pelo headers
-            to,
-            text,
-            type,
-            time: hour,
-        })
-    res.sendStatus(201)
+    const userSearch = await participants.find({ name: user });
+    if (userSearch.length === 0) {
+        return res.sendStatus(422);
+    }
 
-})
+    messages.insertOne({
+        from: user,
+        to,
+        text,
+        type,
+        time: hour,
+    });
+    res.sendStatus(201);
+});
 
 app.get("/messages", async (req, res) => {
 
-    const cursor = await db.collection('messages').find({})
-    const messages = []
+    const cursor = await messages.find({})
+    const messagesArray = []
     const user = req.headers.user
     const { from, to } = doc
 
     await cursor.forEach((doc) => {
+        messagesArray.push(doc)
+
         if (from === user || to === "Todos" || to === user) {
-            messages.push(doc)
+            messagesArray.push(doc)
         }
     })
 
-    res.send(messages)
+    res.send(messagesArray)
 
 })
 
