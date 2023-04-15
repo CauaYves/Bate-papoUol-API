@@ -12,63 +12,72 @@ app.use(cors())
 app.use(express.json())
 dotenv.config()
 
-let db
-let participants
-let messages
-let status
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL)   //conexão com o banco de dados
-mongoClient.connect()
-    .then(() => {
-        db = mongoClient.db()
-        participants = db.collection("participants")
-        messages = db.collection("messages")
-        status = db.collection("status")
-    })
-    .catch(() => console.log(err.message))
+try {
+    await mongoClient.connect()
+    console.log("MongoDB connected!")
+} catch (err) {
+    console.log(err.message)
+}
+
+const db = mongoClient.db()     //coleções do banco
+const participants = db.collection("participants")
+const messages = db.collection("messages")
+const status = db.collection("status")
 
 app.post("/participants", async (req, res) => {    //Rotas da API
 
     const { name } = req.body
-
     if (!name || !isNaN(name)) return res.sendStatus(422)
 
-    const username = await participants.findOne({ name: name })
+    try {
+        const username = await participants.findOne({ name: name })
 
-    if (username) return res.sendStatus(409)
+        if (username) return res.sendStatus(409)
 
-    participants.insertOne({
-        name: name,
-        lastStatus: Date.now()
-    })
+        participants.insertOne({
+            name: name,
+            lastStatus: Date.now()
+        })
 
-    messages.insertOne({
-        from: name,
-        to: 'Todos',
-        text: 'entra na sala...',
-        type: 'status',
-        time: hour
-    })
-    res.sendStatus(201)
+        messages.insertOne({
+            from: name,
+            to: 'Todos',
+            text: 'entra na sala...',
+            type: 'status',
+            time: hour
+        })
+        res.sendStatus(201)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+
 })
 
 app.get("/participants", async (req, res) => {
-    const participantes = []
-    const cursor = await participants.find({}).toArray();
-    cursor.forEach((doc) => participantes.push(doc));
-    res.send(participantes)
+
+    try {
+
+        const participantes = []
+        const cursor = await participants.find({}).toArray();
+
+        cursor.forEach((doc) => participantes.push(doc));
+        res.send(participantes)
+
+    } catch (err) {
+
+        res.send(500).send(err.message)
+
+    }
+
+
 })
 
 app.post("/messages", async (req, res) => {
+
     const { to, text, type } = req.body;
     const userName = req.headers.user;
-
-    await participants.findOne({ name: userName }, (err, foundUser) => {
-        if (err) throw err;
-        if (!foundUser) {
-            return res.sendStatus(422);
-        }
-    });
 
     if (!to || !text || !userName || !type || (type !== "message" && type !== "status" && type !== "private_message")) {
         return res.sendStatus(422);
@@ -77,39 +86,66 @@ app.post("/messages", async (req, res) => {
     const userSearch = await participants.findOne({ name: userName });
     if (!userSearch) return res.sendStatus(422);
 
-    messages.insertOne({
-        from: userName,
-        to,
-        text,
-        type,
-        time: hour,
-    });
-    res.sendStatus(201);
+    try {
+        await participants.findOne({ name: userName }, (err, foundUser) => {
+            if (err) throw err;
+            if (!foundUser) {
+                return res.sendStatus(422);
+            }
+        });
+        messages.insertOne({
+            from: userName,
+            to,
+            text,
+            type,
+            time: hour,
+        });
+        res.sendStatus(201);
+    } catch (err) {
+        res.status(500).send(err.message)
+
+    }
+
 });
 
 app.get("/messages", async (req, res) => {
     const messagesArray = [];
     const userName = req.headers.user;
-    const cursor = await messages.find({}).toArray();
 
-    messagesArray.push(...cursor.filter((doc) => {
-        return doc.from === userName || doc.to === "Todos" || doc.to === userName;
-    }));
+    try {
+        const cursor = await messages.find({}).toArray();
 
-    res.send(messagesArray);
+        messagesArray.push(...cursor.filter((doc) => {
+            return doc.from === userName || doc.to === "Todos" || doc.to === userName;
+        }));
+
+        res.send(messagesArray);
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+
+
 });
 
-app.post("/status", async (req, res) => {
+app.post("/status/:id", async (req, res) => {
+    
     const user = req.headers.user
-    if (req.body.user) return res.sendStatus(404)
+    
+    if (!user) return res.sendStatus(404)
 
-    const filter = { name: user }
-    const updateStatus = { $set: { lastStatus: Date.now() } }
-    const result = await participants.findOneAndUpdate(filter, updateStatus);
+    try {
+        const filter = { name: user }
+        const updateStatus = { $set: { lastStatus: Date.now() } }
+        const result = await participants.findOneAndUpdate(filter, updateStatus);
+        
+        if(!result.lastErrorObject.updatedExisting) return res.sendStatus(404)
 
-    res.send(result)
+        res.sendStatus(200)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+
 })
-
 
 const PORT = 5000
 app.listen(PORT, () => console.log(`server running on port ${PORT}`))
