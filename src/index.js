@@ -47,32 +47,37 @@ app.post("/participants", async (req, res) => {    //Rotas da API
         type: 'status',
         time: hour
     })
+    // { from: 'xxx', to: 'Todos', text: 'entra na sala...', type: 'status', time: 'HH:mm:ss' }
     res.sendStatus(201)
 })
 
 app.get("/participants", async (req, res) => {
     const participantes = []
     const cursor = await participants.find({});
-    await cursor.forEach((doc) => participantes.push(doc));
+    cursor.forEach((doc) => participantes.push(doc));
     res.send(participantes)
 })
 
 app.post("/messages", async (req, res) => {
     const { to, text, type } = req.body;
-    console.log(to, text, type)
-    const user = req.headers.user;
+    const userName = req.headers.user;
 
-    if (!to || !text || !type || !user) {
+    await participants.findOne({ name: userName }, (err, foundUser) => {
+        if (err) throw err;
+        if (!foundUser) {
+            return res.sendStatus(422);
+        }
+    });
+
+    if (!to || !text || !userName || !type || (type !== "message" && type !== "status" && type !== "private_message")) {
         return res.sendStatus(422);
     }
 
-    const userSearch = await participants.find({ name: user });
-    if (userSearch.length === 0) {
-        return res.sendStatus(422);
-    }
+    const userSearch = await participants.findOne({ name: userName });
+    if (!userSearch) return res.sendStatus(422);
 
     messages.insertOne({
-        from: user,
+        from: userName,
         to,
         text,
         type,
@@ -82,28 +87,22 @@ app.post("/messages", async (req, res) => {
 });
 
 app.get("/messages", async (req, res) => {
+    const messagesArray = [];
+    const userName = req.headers.user;
 
-    const cursor = await messages.find({})
-    const messagesArray = []
-    const user = req.headers.user
-    const { from, to } = doc
+    const cursor = await messages.find({}).toArray();
 
-    await cursor.forEach((doc) => {
-        messagesArray.push(doc)
+    messagesArray.push(...cursor.filter((doc) => {
+        return doc.from === userName || doc.to === "Todos" || doc.to === userName;
+    }));
 
-        if (from === user || to === "Todos" || to === user) {
-            messagesArray.push(doc)
-        }
-    })
+    res.send(messagesArray);
+});
 
-    res.send(messagesArray)
-
-})
 
 app.post("/status", (req, res) => {
 
     const user = req.headers.user
-
 
     res.send(user)
 })
