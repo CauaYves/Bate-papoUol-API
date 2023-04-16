@@ -1,6 +1,6 @@
 import express from "express"
 import cors from "cors"
-import { MongoClient } from "mongodb"
+import { MongoClient, ObjectId } from "mongodb"
 import dotenv from "dotenv"
 import dayjs from "dayjs"
 
@@ -32,9 +32,11 @@ app.post("/participants", async (req, res) => {    //Rotas da API
     if (!name || !isNaN(name)) return res.sendStatus(422)
 
     try {
+
         const username = await participants.findOne({ name: name })
         if (username) return res.sendStatus(409)
         userName = name
+
         await participants.insertOne({
             name: name,
             lastStatus: Date.now()
@@ -129,6 +131,8 @@ app.get("/messages", async (req, res) => {
 app.get("/messages/limit", async (req, res) => {
 
     const { limit } = req.query
+    const { user } = req.headers
+    console.log(user)
     const msgLimit = Number(limit)
 
     if (!msgLimit || msgLimit <= 0) return res.sendStatus(422)
@@ -139,10 +143,10 @@ app.get("/messages/limit", async (req, res) => {
 
         if (cursor.length === 0) res.sendStatus(422)
 
-        for (let j = 0; j <= msgLimit - 1; j++) {
+        for (let j = 0; j <= msgLimit; j++) {
             const msg = cursor[j]
 
-            if (msg.to === "Todos" || msg.from === userName || msg.to === userName) {
+            if (msg.to === "Todos" || msg.from === user || msg.to === user) {
                 messagesArray.push(msg)
             }
         }
@@ -155,24 +159,55 @@ app.get("/messages/limit", async (req, res) => {
 
 })
 
-app.post("/status/:id", async (req, res) => {
+app.post("/status", async (req, res) => {
+    const userChat = req.headers.user
+    if (!userChat) return res.sendStatus(404)
 
-    const user = req.headers.user
-
-    if (!user) return res.sendStatus(404)
+    function isOnline(search) {
+        const tenSecsAgo = Date.now() - 10000
+        console.log(search.lastStatus, tenSecdsAgo)
+        if (search.lastStatus < tenSecsAgo) {
+            return false
+        }
+        return true
+    }
 
     try {
-        const filter = { name: user }
         const updateStatus = { $set: { lastStatus: Date.now() } }
-        const result = await participants.findOneAndUpdate(filter, updateStatus);
-
+        const result = await participants.findOneAndUpdate({ name: userChat }, updateStatus);
         if (!result.lastErrorObject.updatedExisting) return res.sendStatus(404)
+
+        console.log(2)
+
+        const searchAllUser = await participants.find({}).toArray()
+
+        async function killUsers(search) {
+            for (const user of search) {
+                if (!isOnline(user)) {
+                    const id = user._id
+                    const filter = { _id: new ObjectId(id) }
+                    try {
+                        await participants.deleteOne(filter)
+                        await messages.insertOne({
+                            from: userChat,
+                            to: 'Todos',
+                            text: 'sai da sala...',
+                            type: 'status',
+                            time: hour
+                        })
+                    } catch (err) {
+                        console.log('Erro ao excluir usuário ou inserir mensagem:', err)
+                    }
+                }
+            }
+        }
+
+        setInterval(async () => await killUsers(searchAllUser), 15000)
 
         res.sendStatus(200)
     } catch (err) {
         res.status(500).send(err.message)
     }
-
 })
 
 const PORT = 5000
