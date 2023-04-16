@@ -11,7 +11,7 @@ const hour = data.format('HH:mm:ss')
 app.use(cors())
 app.use(express.json())
 dotenv.config()
-
+let userName
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL)   //conexão com o banco de dados
 try {
@@ -24,7 +24,7 @@ try {
 const db = mongoClient.db()     //coleções do banco
 const participants = db.collection("participants")
 const messages = db.collection("messages")
-  
+
 
 app.post("/participants", async (req, res) => {    //Rotas da API
 
@@ -34,7 +34,7 @@ app.post("/participants", async (req, res) => {    //Rotas da API
     try {
         const username = await participants.findOne({ name: name })
         if (username) return res.sendStatus(409)
-
+        userName = name
         await participants.insertOne({
             name: name,
             lastStatus: Date.now()
@@ -126,18 +126,47 @@ app.get("/messages", async (req, res) => {
 
 });
 
+app.get("/messages/limit", async (req, res) => {
+
+    const { limit } = req.query
+    const msgLimit = Number(limit)
+
+    if (!msgLimit || msgLimit <= 0) return res.sendStatus(422)
+
+    try {
+        const cursor = await messages.find({}).toArray();
+        const messagesArray = []
+
+        if (cursor.length === 0) res.sendStatus(422)
+
+        for (let j = 0; j <= msgLimit - 1; j++) {
+            const msg = cursor[j]
+
+            if (msg.to === "Todos" || msg.from === userName || msg.to === userName) {
+                messagesArray.push(msg)
+            }
+        }
+
+        res.send(messagesArray)
+    }
+    catch (err) {
+        res.status(500).send(err.message)
+    }
+
+})
+
 app.post("/status/:id", async (req, res) => {
-    
+
     const user = req.headers.user
-    
+
     if (!user) return res.sendStatus(404)
 
     try {
         const filter = { name: user }
         const updateStatus = { $set: { lastStatus: Date.now() } }
         const result = await participants.findOneAndUpdate(filter, updateStatus);
-        
-        if(!result.lastErrorObject.updatedExisting) return res.sendStatus(404)
+
+        if (!result.lastErrorObject.updatedExisting) return res.sendStatus(404)
 
         res.sendStatus(200)
     } catch (err) {
