@@ -74,7 +74,6 @@ app.get("/participants", async (req, res) => {
 
 
 })
-
 app.post("/messages", async (req, res) => {
 
     const { to, text, type } = req.body;
@@ -108,16 +107,26 @@ app.post("/messages", async (req, res) => {
     }
 
 });
-
 app.get("/messages", async (req, res) => {
     const messagesArray = []
     const { user } = req.headers
     const { limit } = req.query
 
-    if (!limit) {
+    if (!limit) {   //deve executar isso quando um limite não é especificado
 
         try {
             const cursor = await messages.find({}).toArray();
+
+            if(cursor.length === 0){
+                await messages.insertOne({
+                    from: user,
+                    to: "Todos",
+                    text: "entra na sala...",
+                    type: "status",
+                    time: hour,
+                })
+                res.sendStatus(200)
+            }
 
             messagesArray.push(...cursor.filter((doc) => {
                 return doc.from === user || doc.to === "Todos" || doc.to === user;
@@ -127,7 +136,7 @@ app.get("/messages", async (req, res) => {
         } catch (err) {
             res.status(500).send(err.message)
         }
-    } else {
+    } else {    //isso é executado se houver um limite
 
         const msgLimit = Number(limit)
 
