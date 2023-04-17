@@ -115,9 +115,10 @@ app.get("/messages", async (req, res) => {
     if (!limit) {   //deve executar isso quando um limite não é especificado
 
         try {
-            const cursor = await messages.find({}).toArray();
+            const cursorPartcipants = await participants.find({}).toArray()
+            const cursorMsg = await messages.find({}).toArray()
 
-            if(cursor.length === 0){
+            if(cursorMsg.length === 0 && cursorPartcipants.length > 0){
                 await messages.insertOne({
                     from: user,
                     to: "Todos",
@@ -128,7 +129,7 @@ app.get("/messages", async (req, res) => {
                 res.sendStatus(200)
             }
 
-            messagesArray.push(...cursor.filter((doc) => {
+            messagesArray.push(...cursorMsg.filter((doc) => {
                 return doc.from === user || doc.to === "Todos" || doc.to === user;
             }));
 
