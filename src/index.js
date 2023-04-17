@@ -6,7 +6,6 @@ import dayjs from "dayjs"
 
 const app = express()   //variaveis
 const data = dayjs()
-const hour = data.format('HH:mm:ss')
 
 app.use(cors())
 app.use(express.json())
@@ -47,7 +46,7 @@ app.post("/participants", async (req, res) => {    //Rotas da API
             to: 'Todos',
             text: 'entra na sala...',
             type: 'status',
-            time: hour
+            time: data.format('HH:mm:ss')
         })
         res.sendStatus(201)
     } catch (err) {
@@ -55,7 +54,6 @@ app.post("/participants", async (req, res) => {    //Rotas da API
     }
 
 })
-
 app.get("/participants", async (req, res) => {
 
     try {
@@ -98,7 +96,7 @@ app.post("/messages", async (req, res) => {
             to,
             text,
             type,
-            time: hour,
+            time: data.format('HH:mm:ss'),
         });
         res.sendStatus(201);
     } catch (err) {
@@ -124,7 +122,7 @@ app.get("/messages", async (req, res) => {
                     to: "Todos",
                     text: "entra na sala...",
                     type: "status",
-                    time: hour,
+                    time: data.format('HH:mm:ss'),
                 })
                 res.sendStatus(200)
             }
@@ -164,7 +162,6 @@ app.get("/messages", async (req, res) => {
 
     }
 })
-
 app.post("/status", async (req, res) => {
     const userChat = req.headers.user
     if (!userChat) return res.sendStatus(404)
@@ -186,9 +183,9 @@ function isOnline(search) {
     return true
 }
 
-
-async function killUsers(search) {
-    for (const user of search) {
+async function killUsers() {
+    const searchAllUser = await participants.find({}).toArray()
+    for (const user of searchAllUser) {
         if (!isOnline(user)) {
             const id = user._id
             const filter = { _id: new ObjectId(id) }
@@ -199,7 +196,7 @@ async function killUsers(search) {
                     to: 'Todos',
                     text: 'sai da sala...',
                     type: 'status',
-                    time: hour
+                    time: data.format('HH:mm:ss')
                 })
             } catch (err) {
                 console.log(err.message)
@@ -207,9 +204,8 @@ async function killUsers(search) {
         }
     }
 }
-const searchAllUser = await participants.find({}).toArray()
 
-setInterval(async () => await killUsers(searchAllUser), 15000)
+setInterval(async () => await killUsers(), 15000)
 
 const PORT = 5000
 app.listen(PORT, () => console.log(`server running on port ${PORT}`))
