@@ -118,7 +118,7 @@ app.get("/messages", async (req, res) => {
             const cursorPartcipants = await participants.find({}).toArray()
             const cursorMsg = await messages.find({}).toArray()
 
-            if(cursorMsg.length === 0 && cursorPartcipants.length > 0){
+            if (cursorMsg.length === 0 && cursorPartcipants.length > 0) {
                 await messages.insertOne({
                     from: user,
                     to: "Todos",
@@ -158,92 +158,58 @@ app.get("/messages", async (req, res) => {
             }
 
             res.send(messagesArray)
-        }catch(err){
+        } catch (err) {
             res.status(500).send(err.message)
         }
 
     }
 })
-// app.get("/messages/limit", async (req, res) => {
-
-//     const { limit } = req.query
-//     const { user } = req.headers
-//     console.log(user)
-//     const msgLimit = Number(limit)
-
-//     if (!msgLimit || msgLimit <= 0) return res.sendStatus(422)
-
-//     try {
-//         const cursor = await messages.find({}).toArray();
-//         const messagesArray = []
-
-//         if (cursor.length === 0) res.sendStatus(422)
-
-//         for (let j = 0; j <= msgLimit; j++) {
-//             const msg = cursor[j]
-
-//             if (msg.to === "Todos" || msg.from === user || msg.to === user) {
-//                 messagesArray.push(msg)
-//             }
-//         }
-
-//         res.send(messagesArray)
-//     }
-//     catch (err) {
-//         res.status(500).send(err.message)
-//     }
-
-// })
 
 app.post("/status", async (req, res) => {
     const userChat = req.headers.user
     if (!userChat) return res.sendStatus(404)
-
-    function isOnline(search) {
-        const tenSecsAgo = Date.now() - 10000
-        if (search.lastStatus < tenSecsAgo) {
-            return false
-        }
-        return true
-    }
 
     try {
         const updateStatus = { $set: { lastStatus: Date.now() } }
         const result = await participants.findOneAndUpdate({ name: userChat }, updateStatus);
         if (!result.lastErrorObject.updatedExisting) return res.sendStatus(404)
 
-        console.log(2)
-
-        const searchAllUser = await participants.find({}).toArray()
-
-        async function killUsers(search) {
-            for (const user of search) {
-                if (!isOnline(user)) {
-                    const id = user._id
-                    const filter = { _id: new ObjectId(id) }
-                    try {
-                        await participants.deleteOne(filter)
-                        await messages.insertOne({
-                            from: userChat,
-                            to: 'Todos',
-                            text: 'sai da sala...',
-                            type: 'status',
-                            time: hour
-                        })
-                    } catch (err) {
-                        console.log('Erro ao excluir usuário ou inserir mensagem:', err)
-                    }
-                }
-            }
-        }
-
-        setInterval(async () => await killUsers(searchAllUser), 15000)
-
         res.sendStatus(200)
     } catch (err) {
         res.status(500).send(err.message)
     }
 })
+function isOnline(search) {
+    if (Date.now() - search.lastStatus > 10000) {
+        return false
+    }
+    return true
+}
+
+
+async function killUsers(search) {
+    for (const user of search) {
+        if (!isOnline(user)) {
+            const id = user._id
+            const filter = { _id: new ObjectId(id) }
+            try {
+                await participants.deleteOne(filter)
+                await messages.insertOne({
+                    from: userChat,
+                    to: 'Todos',
+                    text: 'sai da sala...',
+                    type: 'status',
+                    time: hour
+                })
+            } catch (err) {
+                console.log(err.message)
+            }
+        }
+    }
+}
+const searchAllUser = await participants.find({}).toArray()
+
+setInterval(async () => await killUsers(searchAllUser), 15000)
 
 const PORT = 5000
 app.listen(PORT, () => console.log(`server running on port ${PORT}`))
