@@ -130,7 +130,7 @@ app.get("/messages", async (req, res) => {
             }
 
             messagesArray.push(...cursorMsg.filter((doc) => {
-                return doc.from === user || doc.to === "Todos" || doc.to === user;
+                return doc.from === user || doc.to === "Todos" || doc.to === user || doc.type === "message";
             }));
 
             res.send(messagesArray);
@@ -152,7 +152,7 @@ app.get("/messages", async (req, res) => {
             for (let j = 0; j <= msgLimit - 1; j++) {
                 const msg = cursor[j]
 
-                if (msg.to === "Todos" || msg.from === user || msg.to === user) {
+                if (msg.to === "Todos" || msg.from === user || msg.to === user || doc.type === "message") {
                     messagesArray.push(msg)
                 }
             }
