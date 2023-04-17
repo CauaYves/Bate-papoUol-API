@@ -110,54 +110,80 @@ app.post("/messages", async (req, res) => {
 });
 
 app.get("/messages", async (req, res) => {
-    const messagesArray = [];
-    const userName = req.headers.user;
-
-    try {
-        const cursor = await messages.find({}).toArray();
-
-        messagesArray.push(...cursor.filter((doc) => {
-            return doc.from === userName || doc.to === "Todos" || doc.to === userName;
-        }));
-
-        res.send(messagesArray);
-    } catch (err) {
-        res.status(500).send(err.message)
-    }
-
-
-});
-
-app.get("/messages/limit", async (req, res) => {
-
-    const { limit } = req.query
+    const messagesArray = []
     const { user } = req.headers
-    console.log(user)
-    const msgLimit = Number(limit)
+    const { limit } = req.query
 
-    if (!msgLimit || msgLimit <= 0) return res.sendStatus(422)
+    if (!limit) {
 
-    try {
-        const cursor = await messages.find({}).toArray();
-        const messagesArray = []
+        try {
+            const cursor = await messages.find({}).toArray();
 
-        if (cursor.length === 0) res.sendStatus(422)
+            messagesArray.push(...cursor.filter((doc) => {
+                return doc.from === user || doc.to === "Todos" || doc.to === user;
+            }));
 
-        for (let j = 0; j <= msgLimit; j++) {
-            const msg = cursor[j]
+            res.send(messagesArray);
+        } catch (err) {
+            res.status(500).send(err.message)
+        }
+    } else {
 
-            if (msg.to === "Todos" || msg.from === user || msg.to === user) {
-                messagesArray.push(msg)
+        const msgLimit = Number(limit)
+
+        if (!msgLimit || msgLimit <= 0) return res.sendStatus(422)
+
+        try {
+            const cursor = await messages.find({}).toArray();
+            const messagesArray = []
+
+            if (cursor.length === 0) res.sendStatus(422)
+
+            for (let j = 0; j <= msgLimit - 1; j++) {
+                const msg = cursor[j]
+
+                if (msg.to === "Todos" || msg.from === user || msg.to === user) {
+                    messagesArray.push(msg)
+                }
             }
+
+            res.send(messagesArray)
+        }catch(err){
+            res.status(500).send(err.message)
         }
 
-        res.send(messagesArray)
     }
-    catch (err) {
-        res.status(500).send(err.message)
-    }
-
 })
+// app.get("/messages/limit", async (req, res) => {
+
+//     const { limit } = req.query
+//     const { user } = req.headers
+//     console.log(user)
+//     const msgLimit = Number(limit)
+
+//     if (!msgLimit || msgLimit <= 0) return res.sendStatus(422)
+
+//     try {
+//         const cursor = await messages.find({}).toArray();
+//         const messagesArray = []
+
+//         if (cursor.length === 0) res.sendStatus(422)
+
+//         for (let j = 0; j <= msgLimit; j++) {
+//             const msg = cursor[j]
+
+//             if (msg.to === "Todos" || msg.from === user || msg.to === user) {
+//                 messagesArray.push(msg)
+//             }
+//         }
+
+//         res.send(messagesArray)
+//     }
+//     catch (err) {
+//         res.status(500).send(err.message)
+//     }
+
+// })
 
 app.post("/status", async (req, res) => {
     const userChat = req.headers.user
@@ -165,7 +191,6 @@ app.post("/status", async (req, res) => {
 
     function isOnline(search) {
         const tenSecsAgo = Date.now() - 10000
-        console.log(search.lastStatus, tenSecdsAgo)
         if (search.lastStatus < tenSecsAgo) {
             return false
         }
